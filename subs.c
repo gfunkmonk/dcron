@@ -70,7 +70,9 @@ vlog(int level, int fd, const char *ctl, va_list va)
 			 * we don't care here whether it truncates
 			 */
 			vsnprintf(buf, sizeof(buf), ctl, va);
-			write(fd, buf, strlen(buf));
+			if (write(fd, buf, strlen(buf)) < 0) {
+				/* Ignore write errors to avoid cascading failures */
+			}
 		} else if (SyslogOpt) {
 			/* log to syslog */
 			vsnprintf(buf, sizeof(buf), ctl, va);
@@ -105,7 +107,9 @@ vlog(int level, int fd, const char *ctl, va_list va)
 			if ((buflen = vsnprintf(buf + hdrlen, sizeof(buf) - hdrlen, ctl, va) + hdrlen) >= sizeof(buf))
 				buflen = sizeof(buf) - 1;
 
-			write(fd, buf, buflen);
+			if (write(fd, buf, buflen) < 0) {
+				/* Ignore write errors to avoid cascading failures */
+			}
 			/* if previous write wasn't \n-terminated, we suppress header on next write */
 			suppressHeader = (buf[buflen-1] != '\n');
 
@@ -114,8 +118,8 @@ vlog(int level, int fd, const char *ctl, va_list va)
 }
 
 void reopenlogger(int sig) {
-    UNUSED(sig);
 	int fd;
+	(void)sig;
 	if (getpid() == DaemonPid) {
 		/* only daemon handles, children should ignore */
 		if ((fd = open(LogFile, O_WRONLY|O_CREAT|O_APPEND, 0600)) < 0) {
@@ -128,12 +132,12 @@ void reopenlogger(int sig) {
 }
 
 void waitmailjob(int sig) {
-    UNUSED(sig);
+	pid_t child;
+	(void)sig;
 	/*
 	 * Wait for any children in our process group.
 	 * These will all be mailjobs.
 	 */
-	pid_t child;
 	do {
 		child = waitpid(-DaemonPid, NULL, WNOHANG);
 		/* call was interrupted, try again: won't happen because we use SA_RESTART */
@@ -144,6 +148,7 @@ void waitmailjob(int sig) {
 }
 
 void quit(int sig) {
+	(void)sig;
 	Quit = 1;
 }
 

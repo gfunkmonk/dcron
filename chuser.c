@@ -17,7 +17,7 @@ ChangeUser(const char *user, char *dochdir)
 	struct passwd *pas;
 
 	/*
-	 * Obtain password entry and change privilages
+	 * Obtain password entry and change privileges
 	 */
 
 	if ((pas = getpwnam(user)) == 0) {

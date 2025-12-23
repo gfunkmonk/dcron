@@ -71,7 +71,7 @@ RunJob(CronFile *file, CronLine *line)
 			exit(0);
 		}
 
-		/* from this point we are unpriviledged */
+		/* from this point we are unprivileged */
 
 		if (DebugOpt)
 			printlogf(LOG_DEBUG, "child running: %s\n", line->cl_Description);
@@ -304,7 +304,7 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 			exit(0);
 		}
 
-		/* from this point we are unpriviledged */
+		/* from this point we are unprivileged */
 
 		/*
 		 * Inside child, we copy our fd 2 (which may be /dev/null) into

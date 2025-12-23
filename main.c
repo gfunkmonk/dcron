@@ -349,7 +349,9 @@ main(int ac, char **av)
 			}
 		}
 daemon_error:
-		write(pipe_fd[1], &status, sizeof(status));
+		if (write(pipe_fd[1], &status, sizeof(status)) < 0) {
+			/* Failed to communicate status to parent, but continue */
+		}
 		if (status != 0) {
 			exit(status);
 		}
