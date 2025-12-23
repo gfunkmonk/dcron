@@ -1,4 +1,0 @@
-#
-# Parameters to be passed to crond
-#
-EXTRA_OPTS="-S -l info"
