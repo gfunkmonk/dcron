@@ -5,3 +5,5 @@ config
 crond
 crontab
 
+*.orig
+*.rej

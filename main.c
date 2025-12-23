@@ -163,6 +163,10 @@ main(int ac, char **av)
 
 				if (Mailto == NULL && *optarg == '/') {
 					char *buffer = malloc(256);
+					if (!buffer) {
+						printlogf(LOG_ERR, "malloc failed\n");
+						exit(1);
+					}
 					FILE* file = fopen(optarg, "r");
 					if (file) {
 						size_t s = fread(buffer, 1, 256, file);
@@ -173,6 +177,8 @@ main(int ac, char **av)
 							Mailto = buffer;
 						}
 						fclose(file);
+					} else {
+						free(buffer);
 					}
 				}
 				break;
@@ -239,6 +245,10 @@ main(int ac, char **av)
 
 	/* create tempdir with permissions 0755 for cron output */
 	TempDir = strdup(TMPDIR "/cron.XXXXXX");
+	if (!TempDir) {
+		perror("strdup");
+		exit(1);
+	}
 	if (mkdtemp(TempDir) == NULL) {
 		perror("mkdtemp");
 		exit(1);
@@ -349,7 +359,9 @@ main(int ac, char **av)
 			}
 		}
 daemon_error:
-		write(pipe_fd[1], &status, sizeof(status));
+		if (write(pipe_fd[1], &status, sizeof(status)) < 0) {
+			/* Failed to communicate status to parent, but continue */
+		}
 		if (status != 0) {
 			exit(status);
 		}
