@@ -1,0 +1,18 @@
+Source: dcron
+Section: admin
+Priority: optional
+Maintainer: Stefano Balocco <stefano.balocco@gmail.com>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.7.3
+Homepage: http://www.jimpryor.net/linux/dcron.html
+Vcs-Git: https://github.com/profjim/dcron
+
+Package: dcron
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser, debianutils
+Suggests: default-mta | exim4 | mail-transport-agent, logrotate, anacron
+Provides: cron, cron-daemon
+Replaces: cron, cron-daemon
+Conflicts: cron, cron-daemon
+Description: dillon's lightweight cron daemon
+ This is a continuation of Matt Dillon's beautifully minimalist dcron.

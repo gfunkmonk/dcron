@@ -4,9 +4,10 @@ After=syslog.target
 
 [Service]
 Type=forking
-PIDFile=/run/crond.pid
-ExecStart=/usr/sbin/crond -S -l info
+EnvironmentFile=/etc/default/dcron
+ExecStart=/usr/sbin/crond $EXTRA_OPTS
 ExecReload=/bin/kill -HUP $MAINPID
+PIDFile=/run/crond.pid
 Restart=on-failure
 KillMode=process
 

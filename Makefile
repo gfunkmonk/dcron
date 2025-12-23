@@ -1,5 +1,5 @@
 # Makefile for Dillon's crond and crontab
-VERSION = 4.6
+VERSION = 4.6.0
 
 # these variables can be configured by e.g. `make SCRONTABS=/different/path`
 PREFIX = /usr/local
@@ -56,17 +56,20 @@ protos.h: $(SRCS) $(TABSRCS)
 
 crond: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ $(LIBS) -o crond
+	strip crond
 
 crontab: $(TABOBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o crontab
+	strip crontab
 
 %.o: %.c defs.h $(PROTOS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(DEFS) $< -o $@
 
 install:
-	$(INSTALL_PROGRAM) -m0700 -g root crond $(DESTDIR)$(SBINDIR)/crond
-	$(INSTALL_PROGRAM) -m4750 -g $(CRONTAB_GROUP) crontab $(DESTDIR)$(BINDIR)/crontab
+	$(INSTALL_PROGRAM) -m0755 -g root crond $(DESTDIR)$(SBINDIR)/crond
+	$(INSTALL_PROGRAM) -m4754 -g $(CRONTAB_GROUP) crontab $(DESTDIR)$(BINDIR)/crontab
 	$(INSTALL_DATA) crontab.1 $(DESTDIR)$(MANDIR)/man1/crontab.1
+	$(INSTALL_DATA) crontab.5 $(DESTDIR)$(MANDIR)/man5/crontab.5
 	$(INSTALL_DATA) crond.8 $(DESTDIR)$(MANDIR)/man8/crond.8
 	$(INSTALL_DIR) $(DESTDIR)$(SCRONTABS)
 	$(INSTALL_DIR) $(DESTDIR)$(CRONTABS)
@@ -79,8 +82,9 @@ clean: force
 force: ;
 
 man: force
-	-pandoc -t man -f markdown -s crontab.markdown -o crontab.1
-	-pandoc -t man -f markdown -s crond.markdown -o crond.8
+	-pandoc -t man -f markdown -s crontab.1.markdown -o crontab.1
+	-pandoc -t man -f markdown -s crontab.5.markdown -o crontab.5
+	-pandoc -t man -f markdown -s crond.8.markdown -o crond.8
 
 # for maintainer's use only
 TARNAME = /home/abs/_dcron/dcron-$(VERSION).tar.gz

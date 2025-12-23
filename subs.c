@@ -45,14 +45,14 @@ fdprintf(int fd, const char *ctl, ...)
 {
 	va_list va;
 	char buf[LOG_BUFFER];
-    int n;
+	int n;
 
 	va_start(va, ctl);
 	vsnprintf(buf, sizeof(buf), ctl, va);
 	n = write(fd, buf, strlen(buf));
 	va_end(va);
 
-    return n;
+	return n;
 }
 
 void
@@ -166,6 +166,7 @@ initsignals (void) {
 		fdprintf(2, "failed to start SIGHUP handling, reason: %s", strerror(errno));
 		exit(n);
 	}
+
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = quit;
 	if (sigaction (SIGINT, &sa, NULL) != 0) {
@@ -181,13 +182,7 @@ initsignals (void) {
 		fdprintf(2, "failed to start SIGTERM handling, reason: %s", strerror(errno));
 		exit(n);
 	}
-	sa.sa_flags = SA_RESTART;
-	sa.sa_handler = quit;
-	if (sigaction (SIGQUIT, &sa, NULL) != 0) {
-		n = errno;
-		fdprintf(2, "failed to start SIGQUIT handling, reason: %s", strerror(errno));
-		exit(n);
-	}
+
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = waitmailjob;
 	if (sigaction (SIGCHLD, &sa, NULL) != 0) {
@@ -196,5 +191,11 @@ initsignals (void) {
 		exit(n);
 	}
 
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = quit;
+	if (sigaction (SIGQUIT, &sa, NULL) != 0) {
+		n = errno;
+		fdprintf(2, "failed to start SIGQUIT handling, reason: %s", strerror(errno));
+		exit(n);
+	}
 }
-

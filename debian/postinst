@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+test "$1" = 'configure' || exit 0
+
+getent group crontab > /dev/null 2>&1 || addgroup --system crontab
+
+if ! dpkg-statoverride --list /usr/bin/crontab | grep 4750 > /dev/null
+then
+	if dpkg-statoverride --list /usr/bin/crontab > /dev/null
+	then
+		dpkg-statoverride --remove /usr/bin/crontab
+	fi
+	dpkg-statoverride --update --add root crontab 4750 /usr/bin/crontab
+fi
+
+#DEBHELPER#

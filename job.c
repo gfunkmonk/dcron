@@ -63,9 +63,9 @@ RunJob(CronFile *file, CronLine *line)
 		 * Change running state to the user in question
 		 */
 
-		if (ChangeUser(file->cf_UserName, TempDir) < 0) {
+		if (ChangeUser(line->cl_UserName, TempDir) < 0) {
 			printlogf(LOG_ERR, "unable to ChangeUser (user %s %s)\n",
-					file->cf_UserName,
+					line->cl_UserName,
 					line->cl_Description
 					);
 			exit(0);
@@ -113,7 +113,7 @@ RunJob(CronFile *file, CronLine *line)
 		 * Complain to our log (now associated with fd 8)
 		 */
 		fdprintlogf(LOG_ERR, 8, "unable to exec (user %s cmd /bin/sh -c %s)\n",
-				file->cf_UserName,
+				line->cl_UserName,
 				line->cl_Shell
 			   );
 		/*
@@ -129,7 +129,7 @@ RunJob(CronFile *file, CronLine *line)
 		 * Complain to log (with regular fd 2)
 		 */
 		printlogf(LOG_ERR, "unable to fork (user %s %s)\n",
-				file->cf_UserName,
+				line->cl_UserName,
 				line->cl_Description
 				);
 		line->cl_Pid = 0;
@@ -323,8 +323,13 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 		dup2(1, 2);
 		close(mailFd);
 
-		if (!SendMail) {
-			/*
+		if (SendScript != NULL) {
+			char *scriptName = basename(line->cl_Description);
+
+			fdprintlogf(LOG_DEBUG, 8, "writing using custom %s\n", SendScript);
+
+			execl(SendScript, SendScript, file->cf_FileName, scriptName, NULL); 
+		} else if (!SendMail) {			/*
 			 * If using standard sendmail, note in our log (now associated with fd 8)
 			 * that we're trying to mail output
 			 */
@@ -336,7 +341,6 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 
 			/* exec failed: pass through and log the error */
 			SendMail = SENDMAIL;
-
 		} else {
 			/*
 			 * If using custom mailer script, just try to exec it

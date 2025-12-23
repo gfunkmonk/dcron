@@ -1,0 +1,11 @@
+# MIN HOUR DAY    MONTH DAYOFWEEK  COMMAND
+
+  *      *    3,6    nov    fri        echo "3rd&Last Friday"
+  *      *    3,4    nov    fri        echo "3rd&4th Friday"
+  *      *    2      nov    fri        echo "2nd Friday"
+  *      *    1,6    *      wed-fri    echo "1st&last Wednesday-Friday"
+ 02/1    0     *    jan,nov fri        echo "Specific time, Friday in Jan&Nov"
+  *      *     *    *       *          echo "always"
+
+
+# vim: set tabstop=8:

@@ -1,0 +1,81 @@
+dcron (4.6.0-1) UNRELEASED; urgency=medium
+
+  * Non-maintainer upload.
+
+
+ -- root <root@DietPi>  Wed, 08 Oct 2025 21:37:52 -0400
+
+dcron (4.6.0-1~Balocco9+3) stretch; urgency=medium
+
+  * Fixed service file
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Mon, 08 Feb 2021 01:47:15 +0100
+
+dcron (4.6.0-1~Balocco9+2) stretch; urgency=medium
+
+  * Fixed service file
+  * Fixed some constants
+  * Fixed rules file
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Mon, 08 Feb 2021 01:03:45 +0100
+
+dcron (4.6.0-1~Balocco9+1) stretch; urgency=medium
+
+  * Changed upstream
+  * Support for system crontab
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Sun, 07 Feb 2021 02:25:02 +0100
+
+dcron (4.5-2+20151129~Balocco9+1) stretch; urgency=medium
+
+  * Version bump
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Tue, 19 Jul 2016 21:04:41 +0200
+
+dcron (4.5-2~Balocco9+1) stretch; urgency=medium
+
+  * Ported to stretch
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Sun, 01 May 2016 20:06:38 +0200
+
+dcron (4.5-1~Balocco80+1) jessie; urgency=medium
+
+  * Ported to jessie
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Sun, 28 Sep 2014 11:28:46 +0200
+
+dcron (4.5-1~Balocco70+1) wheezy; urgency=low
+
+  * Ported to wheezy
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Mon, 01 Jul 2013 15:35:59 +0200
+
+dcron (4.5-1~Balocco60+3) balocco; urgency=low
+
+  * Fixed permissions on /usr/bin/crontab
+
+ -- Stefano Balocco <Stefano.Balocco@gmail.com>  Wed, 07 Mar 2012 11:24:21 +0100
+
+dcron (4.5-1~Balocco60+2) balocco; urgency=low
+
+  * Fixed the init script
+
+ -- Stefano Balocco <stefano@squeeze64.lan.signalos.info>  Tue, 06 Mar 2012 18:58:49 +0100
+
+dcron (4.5-1~Balocco60+1) balocco; urgency=low
+
+  * Ported to Squeeze
+
+ -- Stefano Balocco <stefano.balocco@gmail.com>  Sat, 24 Dec 2011 09:16:38 +0100
+
+dcron (4.5-1~Balocco50+2) balocco; urgency=low
+
+  * Fixed a missing suid bit
+
+ -- Stefano Balocco <stefano.balocco@gmail.com>  Sun, 28 Aug 2011 02:02:51 +0200
+
+dcron (4.5-1~Balocco50+1) balocco; urgency=low
+
+  * Initial release
+
+ -- Stefano Balocco <stefano.balocco@gmail.com>  Sat, 27 Aug 2011 12:40:31 +0200

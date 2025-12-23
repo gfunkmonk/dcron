@@ -44,6 +44,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdio.h>
+#include <libgen.h>
 
 #define Prototype extern
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
@@ -51,11 +52,11 @@
 #ifndef SCRONTABS
 #define SCRONTABS	"/etc/cron.d"
 #endif
+#ifndef PIDFILE
+#define PIDFILE		"/run/crond.pid"
+#endif
 #ifndef CRONTABS
 #define CRONTABS	"/var/spool/cron/crontabs"
-#endif
-#ifndef PIDFILE
-#define PIDFILE     "/var/run/crond.pid"
 #endif
 #ifndef CRONSTAMPS
 #define CRONSTAMPS	"/var/spool/cron/cronstamps"
@@ -87,7 +88,7 @@
 #define SENDMAIL_ARGS	"-t", "-oem", "-i"
 #endif
 #ifndef PATH_VI
-#define PATH_VI		"/usr/bin/vi"	/* location of vi	*/
+#define PATH_VI		"/usr/bin/editor"	/* location of vi	*/
 #endif
 
 #ifndef ID_TAG
@@ -143,6 +144,7 @@ typedef struct CronFile {
 typedef struct CronLine {
     struct CronLine *cl_Next;
     char	*cl_Shell;	/* shell command			*/
+    char        *cl_UserName;   /* to execute as                        */
 	char	*cl_Description;	/* either "<cl_Shell>" or "job <cl_JobName>" */
 	char	*cl_JobName;	/* job name, if any			*/
 	char	*cl_Timestamp;	/* path to timestamp file, if cl_Freq defined */

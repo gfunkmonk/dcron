@@ -24,6 +24,7 @@ Prototype const char *LogHeader;
 Prototype uid_t DaemonUid;
 Prototype pid_t DaemonPid;
 Prototype const char *SendMail;
+Prototype const char *SendScript;
 Prototype const char *Mailto;
 Prototype char *TempDir;
 Prototype char *TempFileFmt;
@@ -42,6 +43,7 @@ const char *LogFile = NULL; 	/* opened with mode 0600 */
 const char *LogHeader = LOGHEADER;
 const char *PidFile = PIDFILE;
 const char *SendMail = NULL;
+const char *SendScript = NULL;
 const char *Mailto = NULL;
 char *TempDir;
 char *TempFileFmt;
@@ -56,14 +58,11 @@ main(int ac, char **av)
 		"emerg",
 		"alert",
 		"crit",
-		"err",
+		"error",
 		"warning",
 		"notice",
 		"info",
 		"debug",
-		"panic",
-		"error",
-		"warn",
 		NULL
 	};
 	int i;
@@ -76,21 +75,12 @@ main(int ac, char **av)
 
 	opterr = 0;
 
-	while ((i = getopt(ac,av,"dl:L:fbSc:s:m:M:t:C:Pp:")) != -1) {
+	while ((i = getopt(ac,av,"vdl:L:fbSc:s:m:M:t:Pp:w:C")) != -1) {
 		switch (i) {
 			case 'l':
 				{
-					char *ptr;
-					int j;
-					ptr = optarg;
-					for (j = 0; LevelAry[j]; ++j) {
-						if (strncmp(ptr, LevelAry[j], strlen(LevelAry[j])) == 0) {
-							break;
-						}
-					}
-					switch(j) {
+					switch(atoi(optarg)) {
 						case 0:
-						case 8:
 							/* #define	LOG_EMERG	0	[* system is unusable *] */
 							LogLevel = LOG_EMERG;
 							break;
@@ -103,12 +93,10 @@ main(int ac, char **av)
 							LogLevel = LOG_CRIT;
 							break;
 						case 3:
-						case 9:
 							/* #define	LOG_ERR		3	[* error conditions *] */
 							LogLevel = LOG_ERR;
 							break;
 						case 4:
-						case 10:
 							/* #define	LOG_WARNING	4	[* warning conditions *] */
 							LogLevel = LOG_WARNING;
 							break;
@@ -125,14 +113,15 @@ main(int ac, char **av)
 							LogLevel = LOG_DEBUG;
 							break;
 						default:
-							LogLevel = atoi(optarg);
+							fprintf(stderr, "Unsupported loglevel %s.\n", optarg);
+							exit(2);
 					}
 				}
 				break;
 			case 'd':
 				DebugOpt = 1;
 				LogLevel = LOG_DEBUG;
-                [[fallthrough]]; //fall through to include f too
+				[[fallthrough]]; //fall through to include f too */
 			case 'f':
 				ForegroundOpt = 1;
 				break;
@@ -187,36 +176,46 @@ main(int ac, char **av)
 					}
 				}
 				break;
+			case 'P':
+				PidFileOpt = 0;
+				break;
+			case 'p':
+				PidFileOpt = 1;
+				PidFile = optarg;
+				break;
+			case 'w':
+				if (*optarg != 0) SendScript = optarg;
+				break;
+			case 'v':
+				printf(VERSION"\n");
+				exit(0);
+				break;
 			case 'C':
 				CreateCronDirsOpt = 1;
 				break;
-                        case 'P':
-                                PidFileOpt = 0;
-                                break;
-                        case 'p':
-                                PidFileOpt = 1;
-                                PidFile = optarg;
-                                break;
 			default:
 				/*
 				 * check for parse error
 				 */
 				printf("dillon's cron daemon " VERSION "\n");
 				printf("crond [-s dir] [-c dir] [-t dir] [-m user@host] [-M mailer] [-S|-L [file]] [-P|-p [file]] [-l level] [-b|-f|-d]\n");
-				printf("-s            directory of system crontabs (defaults to %s)\n", SCRONTABS);
-				printf("-c            directory of per-user crontabs (defaults to %s)\n", CRONTABS);
-				printf("-t            directory of timestamps (defaults to %s)\n", CRONSTAMPS);
-				printf("-C            create per-user crontabs and timestamps directories, if they do not exists\n");
-				printf("-m user@host  where should cron output be directed? (defaults to local user)\n");
-				printf("-M mailer     (defaults to %s)\n", SENDMAIL);
-				printf("-S            log to syslog using identity '%s' (default)\n", LOG_IDENT);
-				printf("-L file       log to specified file instead of syslog\n");
-                                printf("-P            do not create process-id file\n");
-                                printf("-p file       write pid to specified file instead of %s\n", PIDFILE);
-				printf("-l loglevel   log events <= this level (defaults to %s (level %d))\n", LevelAry[LOG_LEVEL], LOG_LEVEL);
-				printf("-b            run in background (default)\n");
-				printf("-f            run in foreground\n");
-				printf("-d            run in debugging mode\n");
+				printf("-s             directory of system crontabs (defaults to %s)\n", SCRONTABS);
+				printf("-c             directory of per-user crontabs (defaults to %s)\n", CRONTABS);
+				printf("-t             directory of timestamps (defaults to %s)\n", CRONSTAMPS);
+				printf("-C             create per-user crontabs and timestamps directories, if they do not exists\n");
+				printf("-m email|file  where should cron output be directed? (defaults to local user)\n");
+				printf("               if you specify a file, the email address will be read from the file.\n");
+				printf("-M mailer      (defaults to %s)\n", SENDMAIL);
+				printf("-S             log to syslog using identity '%s' (default)\n", LOG_IDENT);
+				printf("-L file        log to specified file instead of syslog\n");
+				printf("-P             do not create process-id file\n");
+				printf("-p file        write pid to specified file instead of %s\n", PIDFILE);
+				printf("-l loglevel    log events <= this level (defaults to %s (level %d))\n", LevelAry[LOG_LEVEL], LOG_LEVEL);
+				printf("               loglevel range is from %s (level 0) to %s (level 7)\n", LevelAry[0], LevelAry[7]);
+				printf("-b             run in background (default)\n");
+				printf("-f             run in foreground\n");
+				printf("-d             run in debugging mode\n");
+				printf("-v             show version information\n");
 				exit(2);
 		}
 	}
@@ -271,14 +270,14 @@ main(int ac, char **av)
 
 		int fd;
 		int pid;
-        int pipe_fd[2];
-        int status;
+		int pipe_fd[2];
+		int status;
 
-        if (pipe(pipe_fd) < 0) {
-            //pipe failed
-            perror("pipe");
-            exit(1);
-        }
+		if (pipe(pipe_fd) < 0) {
+			/* pipe failed */
+			perror("pipe");
+			exit(1);
+		}
 
 		if ((pid = fork()) < 0) {
 			/* fork failed */
@@ -286,33 +285,33 @@ main(int ac, char **av)
 			exit(1);
 		} else if (pid > 0) {
 			/* parent, reads from pipe */
-            close(pipe_fd[1]);
-            if (read(pipe_fd[0], &status, sizeof(status)) > 0) {
-                exit(status);
-            }
-            /* error: got zero bytes, so child just closed the write end */
-            exit(1);
-        }
+			close(pipe_fd[1]);
+			if (read(pipe_fd[0], &status, sizeof(status)) > 0) {
+				exit(status);
+			}
+			/* error: got zero bytes, so child just closed the write end */
+			exit(1);
+		}
 
 		/* child continues */
-        close(pipe_fd[0]);
-        status = 0;
+		close(pipe_fd[0]);
+		status = 0;
 
-        /* write pid file or exit */
+		/* write pid file or exit */
 
-        if (PidFileOpt) {
-            if ((fd = open(PidFile, O_WRONLY|O_CREAT|O_TRUNC, 0644)) < 0) {
-                status = errno;
-                fprintf(stderr, "failed to open PID file '%s', reason: %s\n", PidFile, strerror(status));
-                goto daemon_error;
-            }
-            if (fdprintf(fd, "%d\n", getpid()) < 0) {
-                status = errno;
-                fprintf(stderr, "failed to write PID file '%s', reason: %s\n", PidFile, strerror(status));
-                goto daemon_error;
-            }
-            close(fd);
-        }
+		if (PidFileOpt) {
+			if ((fd = open(PidFile, O_WRONLY|O_CREAT|O_TRUNC, 0644)) < 0) {
+				status = errno;
+				fprintf(stderr, "failed to open PID file '%s', reason: %s\n", PidFile, strerror(status));
+				goto daemon_error;
+			}
+			if (fdprintf(fd, "%d\n", getpid()) < 0) {
+				status = errno;
+				fprintf(stderr, "failed to write PID file '%s', reason: %s\n", PidFile, strerror(status));
+				goto daemon_error;
+			}
+			close(fd);
+		}
 
 		/* become session leader, detach from terminal */
 
@@ -345,15 +344,15 @@ main(int ac, char **av)
 				dup2(fd, 2);
 			} else {
 				status = errno;
-				fdprintf(2, "failed to open logfile '%s', reason: %s\n", LogFile, strerror(errno));
+				fdprintf(2, "failed to open logfile '%s', reason: %s\n", LogFile, strerror(status));
 				goto daemon_error;
 			}
 		}
-        daemon_error:
-        write(pipe_fd[1], &status, sizeof(status));
-        if (status != 0) {
-            exit(status);
-        }
+daemon_error:
+		write(pipe_fd[1], &status, sizeof(status));
+		if (status != 0) {
+			exit(status);
+		}
 	} else {
 		/* daemon in foreground */
 
@@ -381,8 +380,9 @@ main(int ac, char **av)
 	 */
 
 	printlogf(LOG_NOTICE,"%s " VERSION " dillon's cron daemon, started with loglevel %s\n", av[0], LevelAry[LogLevel]);
-	SynchronizeDir(CDir, NULL, 1);
-	SynchronizeDir(SCDir, "root", 1);
+	printlogf(LOG_DEBUG, "SendMail: %s, SendScript: %s\n", SendMail, SendScript);
+	SynchronizeDir(CDir, 0, 1);
+	SynchronizeDir(SCDir, 1, 1);
 	ReadTimestamps(NULL);
 	TestStartupJobs(); /* @startup jobs only run when crond is started, not when their crontab is loaded */
 
@@ -430,14 +430,14 @@ main(int ac, char **av)
 					rescan = 1;
 				} else {
 					rescan = 60;
-					SynchronizeDir(CDir, NULL, 0);
-					SynchronizeDir(SCDir, "root", 0);
+					SynchronizeDir(CDir, 0, 0);
+					SynchronizeDir(SCDir, 1, 0);
 					ReadTimestamps(NULL);
 				}
 			} 
 			if (rescan < 60) {
-				CheckUpdates(CDir, NULL, t1, t2);
-				CheckUpdates(SCDir, "root", t1, t2);
+				CheckUpdates(CDir, 0, t1, t2);
+				CheckUpdates(SCDir, 1, t1, t2);
 			}
 			if (DebugOpt)
 				printlogf(LOG_DEBUG, "Wakeup dt=%d\n", dt);
@@ -451,7 +451,11 @@ main(int ac, char **av)
 				if (CheckJobs() > 0)
 					stime = 10;
 				else
-					stime = 60;
+					/* Used to be 60 but this skips aminute when,
+					 * time is at :55 because of sleep(5), which happens
+					 * on heavy filesystem load.
+					 */
+					stime = 30;
 				t1 = t2;
 			}
 		}
