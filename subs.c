@@ -143,6 +143,10 @@ void waitmailjob(int sig) {
 	/* if all children still running, child == 0 */
 }
 
+void quit(int sig) {
+	Quit = 1;
+}
+
 void
 initsignals (void) {
 	struct sigaction sa;
@@ -160,6 +164,28 @@ initsignals (void) {
 	if (sigaction (SIGHUP, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGHUP handling, reason: %s", strerror(errno));
+		exit(n);
+	}
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = quit;
+	if (sigaction (SIGINT, &sa, NULL) != 0) {
+		n = errno;
+		fdprintf(2, "failed to start SIGINT handling, reason: %s", strerror(errno));
+		exit(n);
+	}
+
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = quit;
+	if (sigaction (SIGTERM, &sa, NULL) != 0) {
+		n = errno;
+		fdprintf(2, "failed to start SIGTERM handling, reason: %s", strerror(errno));
+		exit(n);
+	}
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = quit;
+	if (sigaction (SIGQUIT, &sa, NULL) != 0) {
+		n = errno;
+		fdprintf(2, "failed to start SIGQUIT handling, reason: %s", strerror(errno));
 		exit(n);
 	}
 	sa.sa_flags = SA_RESTART;

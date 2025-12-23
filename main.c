@@ -28,13 +28,15 @@ Prototype const char *Mailto;
 Prototype char *TempDir;
 Prototype char *TempFileFmt;
 
+short Quit = 0;
 short DebugOpt = 0;
 short LogLevel = LOG_LEVEL;
 short ForegroundOpt = 0;
 short SyslogOpt = 1;
 short PidFileOpt = 1;
-const char  *CDir = CRONTABS;
-const char  *SCDir = SCRONTABS;
+short CreateCronDirsOpt = 0;
+const char *CDir = CRONTABS;
+const char *SCDir = SCRONTABS;
 const char *TSDir = CRONSTAMPS;
 const char *LogFile = NULL; 	/* opened with mode 0600 */
 const char *LogHeader = LOGHEADER;
@@ -74,7 +76,7 @@ main(int ac, char **av)
 
 	opterr = 0;
 
-	while ((i = getopt(ac,av,"dl:L:fbSc:s:m:M:t:Pp:")) != -1) {
+	while ((i = getopt(ac,av,"dl:L:fbSc:s:m:M:t:C:Pp:")) != -1) {
 		switch (i) {
 			case 'l':
 				{
@@ -161,15 +163,40 @@ main(int ac, char **av)
 				if (*optarg != 0) SendMail = optarg;
 				break;
 			case 'm':
-				if (*optarg != 0) Mailto = optarg;
+				if (*optarg == 0) break;
+
+				for (const char *c = optarg; *c != 0; ++c) {
+					if (*c == '@') {
+						Mailto = optarg;
+						break;
+					}
+				}
+
+				if (Mailto == NULL && *optarg == '/') {
+					char *buffer = malloc(256);
+					FILE* file = fopen(optarg, "r");
+					if (file) {
+						size_t s = fread(buffer, 1, 256, file);
+						if (s < 1) {
+							free(buffer);
+						} else {
+							buffer[s] = 0;
+							Mailto = buffer;
+						}
+						fclose(file);
+					}
+				}
 				break;
-            case 'P':
-                PidFileOpt = 0;
-                break;
-            case 'p':
-                PidFileOpt = 1;
-                PidFile = optarg;
-                break;
+			case 'C':
+				CreateCronDirsOpt = 1;
+				break;
+                        case 'P':
+                                PidFileOpt = 0;
+                                break;
+                        case 'p':
+                                PidFileOpt = 1;
+                                PidFile = optarg;
+                                break;
 			default:
 				/*
 				 * check for parse error
@@ -179,12 +206,13 @@ main(int ac, char **av)
 				printf("-s            directory of system crontabs (defaults to %s)\n", SCRONTABS);
 				printf("-c            directory of per-user crontabs (defaults to %s)\n", CRONTABS);
 				printf("-t            directory of timestamps (defaults to %s)\n", CRONSTAMPS);
+				printf("-C            create per-user crontabs and timestamps directories, if they do not exists\n");
 				printf("-m user@host  where should cron output be directed? (defaults to local user)\n");
 				printf("-M mailer     (defaults to %s)\n", SENDMAIL);
 				printf("-S            log to syslog using identity '%s' (default)\n", LOG_IDENT);
 				printf("-L file       log to specified file instead of syslog\n");
-                printf("-P            do not create process-id file\n");
-                printf("-p file       write pid to specified file instead of %s\n", PIDFILE);
+                                printf("-P            do not create process-id file\n");
+                                printf("-p file       write pid to specified file instead of %s\n", PIDFILE);
 				printf("-l loglevel   log events <= this level (defaults to %s (level %d))\n", LevelAry[LOG_LEVEL], LOG_LEVEL);
 				printf("-b            run in background (default)\n");
 				printf("-f            run in foreground\n");
@@ -224,6 +252,19 @@ main(int ac, char **av)
 		errno = ENOMEM;
 		perror("main");
 		exit(1);
+	}
+
+	if (CreateCronDirsOpt) {
+		if (mkdir(CDir, 0755) == -1 && errno != EEXIST) {
+			fdprintf(2, "failed to create %s", CDir);
+			perror(": ");
+			exit(1);
+		}
+		if (mkdir(TSDir, 0755) == -1 && errno != EEXIST) {
+			fdprintf(2, "failed to create %s", TSDir);
+			perror(": ");
+			exit(1);
+		}
 	}
 
 	if (ForegroundOpt == 0) {
@@ -317,9 +358,11 @@ main(int ac, char **av)
 		/* daemon in foreground */
 
 		/* stay in existing session, but start a new process group */
-		if (setpgid(0,0)) {
-			perror("setpgid");
-			exit(1);
+		if (getsid(0) != getpid()) {
+			if (setpgid(0,0)) {
+				perror("setpgid");
+				exit(1);
+			}
 		}
 
 		/* stderr stays open, start SIGHUP ignoring, SIGCHLD handling */
@@ -352,6 +395,11 @@ main(int ac, char **av)
 
 		for (;;) {
 			sleep((stime + 1) - (short)(time(NULL) % stime));
+
+			if (Quit) {
+				fdprintf(2, "\n"); // print new line in case of Ctrl-C
+				break;
+			}
 
 			t2 = time(NULL);
 			dt = t2 - t1;
@@ -408,6 +456,5 @@ main(int ac, char **av)
 			}
 		}
 	}
-	/* not reached */
 }
 

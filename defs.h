@@ -175,5 +175,7 @@ typedef struct CronNotifier {
 	struct	CronWaiter *cn_Waiter;
 } CronNotifier;
 
+extern short Quit;
+
 #include "protos.h"
 
