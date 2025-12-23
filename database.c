@@ -496,6 +496,12 @@ ParseOneAttribute(CronFile *file, CronLine *line, char *ptr,
 							if (job->cl_JobName && strcmp(job->cl_JobName, name) == 0) {
 								CronWaiter *waiter = malloc(sizeof(CronWaiter));
 								CronNotifier *notif = malloc(sizeof(CronNotifier));
+								if (!waiter || !notif) {
+									printlogf(LOG_ERR, "malloc failed while creating waiter/notifier\n");
+									free(waiter);
+									free(notif);
+									break;
+								}
 								waiter->cw_Flag = -1;
 								waiter->cw_MaxWait = waitfor;
 								waiter->cw_NotifLine = job;
