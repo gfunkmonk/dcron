@@ -60,6 +60,7 @@ vlog(int level, int fd, const char *ctl, va_list va)
 {
 	char buf[LOG_BUFFER];
 	static short suppressHeader = 0;
+	static short hostname_initialized = 0;
 
 	if (level <= LogLevel) {
 		if (ForegroundOpt) {
@@ -90,14 +91,18 @@ vlog(int level, int fd, const char *ctl, va_list va)
 				 * run LogHeader through strftime --> [yields hdr] plug in Hostname --> [yields buf]
 				 */
 				char hdr[SMALL_BUFFER];
-				/* strftime returns strlen of result, provided that result plus a \0 fit into buf of size */
-				if (strftime(hdr, sizeof(hdr), LogHeader, tp)) {
-					if (gethostname(Hostname, sizeof(Hostname))==0)
+				/* Initialize hostname once */
+				if (!hostname_initialized) {
+					if (gethostname(Hostname, sizeof(Hostname)) == 0)
 						/* gethostname successful */
 						/* result will be \0-terminated except gethostname doesn't promise to do so if it has to truncate */
 						Hostname[sizeof(Hostname)-1] = 0;
 					else
 						Hostname[0] = 0;   /* gethostname() call failed */
+					hostname_initialized = 1;
+				}
+				/* strftime returns strlen of result, provided that result plus a \0 fit into buf of size */
+				if (strftime(hdr, sizeof(hdr), LogHeader, tp)) {
 					/* [v]snprintf write at most size including \0; they'll null-terminate, even when they truncate */
 					/* return value >= size means result was truncated */
 					if ((hdrlen = snprintf(buf, sizeof(hdr), hdr, Hostname)) >= sizeof(hdr))
