@@ -101,11 +101,11 @@
 #define FREQ_TAG		"FREQ="
 #endif
 
-#define HOURLY_FREQ		60 * 60
-#define DAILY_FREQ		24 * HOURLY_FREQ
-#define	WEEKLY_FREQ		7 * DAILY_FREQ
-#define MONTHLY_FREQ	30 * DAILY_FREQ
-#define YEARLY_FREQ		365 * DAILY_FREQ
+#define HOURLY_FREQ		(60 * 60)
+#define DAILY_FREQ		(24 * HOURLY_FREQ)
+#define	WEEKLY_FREQ		(7 * DAILY_FREQ)
+#define MONTHLY_FREQ	(30 * DAILY_FREQ)
+#define YEARLY_FREQ		(365 * DAILY_FREQ)
 
 #define FIELD_MINUTES   60
 #define FIELD_HOURS     24

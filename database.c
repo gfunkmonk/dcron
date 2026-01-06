@@ -46,14 +46,6 @@ const char *DowAry[] = {
 	"thu",
 	"fri",
 	"sat",
-
-	"Sun",
-	"Mon",
-	"Tue",
-	"Wed",
-	"Thu",
-	"Fri",
-	"Sat",
 	NULL
 };
 
@@ -70,19 +62,6 @@ const char *MonAry[] = {
 	"oct",
 	"nov",
 	"dec",
-
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
 	NULL
 };
 
@@ -322,12 +301,13 @@ ParseTimeInterval(CronLine *line, char *ptr)
 	line->cl_Delay = -1;
 	ptr += 1;
 	for (j = 0; FreqAry[j]; ++j) {
-		if (strncmp(ptr, FreqAry[j], strlen(FreqAry[j])) == 0) {
+		size_t len = strlen(FreqAry[j]);
+		if (strncmp(ptr, FreqAry[j], len) == 0) {
+			ptr += len;
 			break;
 		}
 	}
 	if (FreqAry[j]) {
-		ptr += strlen(FreqAry[j]);
 		switch(j) {
 		case 0:
 			/* noauto */
@@ -803,17 +783,16 @@ ParseField(char *ary, int modvalue, int offset, int onvalue, const char **names,
 			int i;
 
 			for (i = 0; names[i]; ++i) {
-				if (strncmp(ptr, names[i], strlen(names[i])) == 0) {
+				size_t name_len = strlen(names[i]);
+				if (strncasecmp(ptr, names[i], name_len) == 0) {
+					ptr += name_len;
+					if (n1 < 0)
+						n1 = i;
+					else
+						n2 = i;
+					skip = 1;
 					break;
 				}
-			}
-			if (names[i]) {
-				ptr += strlen(names[i]);
-				if (n1 < 0)
-					n1 = i;
-				else
-					n2 = i;
-				skip = 1;
 			}
 		}
 

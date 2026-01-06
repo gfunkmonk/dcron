@@ -79,42 +79,12 @@ main(int ac, char **av)
 		switch (i) {
 			case 'l':
 				{
-					switch(atoi(optarg)) {
-						case 0:
-							/* #define	LOG_EMERG	0	[* system is unusable *] */
-							LogLevel = LOG_EMERG;
-							break;
-						case 1:
-							/* #define	LOG_ALERT	1	[* action must be taken immediately *] */
-							LogLevel = LOG_ALERT;
-							break;
-						case 2:
-							/* #define	LOG_CRIT	2	[* critical conditions *] */
-							LogLevel = LOG_CRIT;
-							break;
-						case 3:
-							/* #define	LOG_ERR		3	[* error conditions *] */
-							LogLevel = LOG_ERR;
-							break;
-						case 4:
-							/* #define	LOG_WARNING	4	[* warning conditions *] */
-							LogLevel = LOG_WARNING;
-							break;
-						case 5:
-							/* #define	LOG_NOTICE	5	[* normal but significant condition *] */
-							LogLevel = LOG_NOTICE;
-							break;
-						case 6:
-							/* #define	LOG_INFO	6	[* informational *] */
-							LogLevel = LOG_INFO;
-							break;
-						case 7:
-							/* #define	LOG_DEBUG	7	[* debug-level messages *] */
-							LogLevel = LOG_DEBUG;
-							break;
-						default:
-							fprintf(stderr, "Unsupported loglevel %s.\n", optarg);
-							exit(2);
+					int level = atoi(optarg);
+					if (level >= 0 && level <= 7) {
+						LogLevel = level;
+					} else {
+						fprintf(stderr, "Unsupported loglevel %s.\n", optarg);
+						exit(2);
 					}
 				}
 				break;
@@ -154,14 +124,9 @@ main(int ac, char **av)
 			case 'm':
 				if (*optarg == 0) break;
 
-				for (const char *c = optarg; *c != 0; ++c) {
-					if (*c == '@') {
-						Mailto = optarg;
-						break;
-					}
-				}
-
-				if (Mailto == NULL && *optarg == '/') {
+				if (strchr(optarg, '@') != NULL) {
+					Mailto = optarg;
+				} else if (*optarg == '/') {
 					char *buffer = malloc(256);
 					if (!buffer) {
 						printlogf(LOG_ERR, "malloc failed\n");
@@ -169,7 +134,7 @@ main(int ac, char **av)
 					}
 					FILE* file = fopen(optarg, "r");
 					if (file) {
-						size_t s = fread(buffer, 1, 256, file);
+						size_t s = fread(buffer, 1, 255, file);
 						if (s < 1) {
 							free(buffer);
 						} else {
