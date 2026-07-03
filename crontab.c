@@ -31,6 +31,7 @@ main(int ac, char **av)
         int repFd = 0;
         int i;
         char caller[SMALL_BUFFER];              /* user that ran program */
+        char *tmp_file = NULL;		/* for cleanup of temp file after edit */
 
         UserId = getuid();
         if ((pas = getpwuid(UserId)) == NULL) {
@@ -160,14 +161,22 @@ main(int ac, char **av)
                                 FILE *fi;
                                 int fd;
                                 int n;
-                                char tmp[] = TMPDIR "/crontab.XXXXXX";
+			  size_t tmpdir_len = strlen(TMPDIR);
+			  size_t template_len = strlen("/crontab.XXXXXX");
+			  char *tmp = malloc(tmpdir_len + template_len + 1);
                                 char buf[RW_BUFFER];
+
+			  if (!tmp) {
+				  printlogf(0, "unable to allocate memory for temp file\n");
+				  exit(1);
+			  }
+			  snprintf(tmp, tmpdir_len + template_len + 1, "%s/crontab.XXXXXX", TMPDIR);
 
                                 /*
                                  * Create temp file with perm 0600 and O_EXCL flag, ensuring that this call creates the file
                                  * Read from fi for "$CDir/$USER", write to fd for temp file
                                  * EditFile changes user if necessary, and runs editor on temp file
-                                 * Then we delete the temp file, keeping its fd as repFd
+			   * After editor returns, reopen the file by path to handle editors that do atomic saves
                                  */
                                 if ((fd = mkstemp(tmp)) >= 0) {
                                         if (fchown(fd, getuid(), getgid()) < 0) {
@@ -186,12 +195,20 @@ main(int ac, char **av)
                                                 }
                                                 fclose(fi);
                                         }
+				                close(fd);
                                         EditFile(caller, tmp);
-                                        remove(tmp);
-                                        lseek(fd, 0L, 0);
+						    /* Reopen by path to get editor's changes (handles atomic save editors like helix) */
+					          fd = open(tmp, O_RDONLY | O_NOFOLLOW);
+					          if (fd < 0) {
+						        printlogf(0, "unable to read edited file %s: %s\n", tmp, strerror(errno));
+						        free(tmp);
+						        exit(1);
+					          }
                                         repFd = fd;
+	   					    tmp_file = tmp;
                                 } else {
                                         printlogf(0, "unable to create %s: %s\n", tmp, strerror(errno));
+					free(tmp);
                                         exit(1);
                                 }
 
@@ -210,7 +227,7 @@ main(int ac, char **av)
                                  */
                                 snprintf(path, sizeof(path), "%s.new", pas->pw_name);
                                 /* FIX: Removed O_EXCL as intended - allows overwriting .new file if it exists */
-                                if ((fd = open(path, O_CREAT|O_TRUNC|O_APPEND|O_WRONLY, 0600)) >= 0) {
+                                if ((fd = open(path, O_CREAT|O_TRUNC|O_APPEND|O_WRONLY|O_NOFOLLOW, 0600)) >= 0) {
                                         while ((n = read(repFd, buf, sizeof(buf))) > 0) {
                                                 /* FIX: Check write() return value and handle partial writes */
                                                 ssize_t written = 0;
@@ -249,6 +266,11 @@ main(int ac, char **av)
                                         exit(1);
                                 }
                                 close(repFd);
+				if (tmp_file) {
+					remove(tmp_file);
+					free(tmp_file);
+					tmp_file = NULL;
+				}
                         }
                         break;
                 case DELETE:
