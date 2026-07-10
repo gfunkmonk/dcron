@@ -13,6 +13,16 @@ Prototype void EndJob(CronFile *file, CronLine *line, int exit_status);
 
 Prototype const char *SendMail;
 
+/*
+ * Build the mail-file path into buf.  Uses a literal format string to
+ * avoid -Wformat-nonliteral warnings that TempFileFmt would trigger.
+ */
+static void
+make_mailfile(char *buf, size_t bufsz, const char *user, int pid)
+{
+	snprintf(buf, bufsz, "%s/cron.%s.%d", TempDir, user, pid);
+}
+
 void
 RunJob(CronFile *file, CronLine *line)
 {
@@ -28,8 +38,7 @@ RunJob(CronFile *file, CronLine *line)
 	 * can tamper with it before we send.
 	 */
 
-	snprintf(mailFile, sizeof(mailFile), TempFileFmt,
-			file->cf_UserName, (int)getpid());
+	make_mailfile(mailFile, sizeof(mailFile), file->cf_UserName, (int)getpid());
 
 	mailFd = open(mailFile, O_CREAT|O_TRUNC|O_WRONLY|O_EXCL|O_APPEND|O_CLOEXEC, 0600);
 	if (mailFd >= 0) {
@@ -126,8 +135,7 @@ RunJob(CronFile *file, CronLine *line)
 		 */
 		char mailFile2[SMALL_BUFFER];
 
-		snprintf(mailFile2, sizeof(mailFile2), TempFileFmt,
-				file->cf_UserName, (int)line->cl_Pid);
+		make_mailfile(mailFile2, sizeof(mailFile2), file->cf_UserName, (int)line->cl_Pid);
 		if (rename(mailFile, mailFile2) < 0) {
 			printlogf(LOG_WARNING, "rename of mail file failed: %s\n", strerror(errno));
 			remove(mailFile);
@@ -178,8 +186,8 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 
 			line->cl_LastRan = line->cl_NotUntil - line->cl_Delay;
 			if ((fi = fopen(line->cl_Timestamp, "w")) != NULL) {
-				if (strftime(buf, sizeof(buf), CRONSTAMP_FMT,
-						localtime(&line->cl_LastRan)))
+				struct tm *ltm = localtime(&line->cl_LastRan);
+				if (ltm && strftime(buf, sizeof(buf), CRONSTAMP_FMT, ltm))
 					if (fputs(buf, fi) >= 0)
 						succeeded = 1;
 				fclose(fi);
@@ -225,8 +233,7 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 	/*
 	 * Determine mail file path before clearing cl_Pid
 	 */
-	snprintf(mailFile, sizeof(mailFile), TempFileFmt,
-			file->cf_UserName, (int)line->cl_Pid);
+	make_mailfile(mailFile, sizeof(mailFile), file->cf_UserName, (int)line->cl_Pid);
 	line->cl_Pid = 0;
 	line->cl_MailFlag = 0;
 

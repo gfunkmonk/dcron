@@ -421,10 +421,10 @@ daemon_error:
 				CheckUpdates(SCDir, 1, t1, t2);
 			}
 			if (DebugOpt)
-				printlogf(LOG_DEBUG, "Wakeup dt=%d\n", dt);
+				printlogf(LOG_DEBUG, "Wakeup dt=%ld\n", dt);
 			if (dt < -60*60 || dt > 60*60) {
 				t1 = t2;
-				printlogf(LOG_NOTICE,"time disparity of %d minutes detected\n", dt / 60);
+				printlogf(LOG_NOTICE,"time disparity of %ld minutes detected\n", dt / 60);
 			} else if (dt > 0) {
 				TestJobs(t1, t2);
 				RunJobs();

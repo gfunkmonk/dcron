@@ -112,10 +112,15 @@ vlog(int level, int fd, const char *ctl, va_list va)
 				hostname_initialized = 1;
 			}
 
+			/* strftime with a runtime format string — non-literal by design */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 			if (strftime(hdr, sizeof(hdr), LogHeader, tp)) {
+				/* snprintf with a strftime-expanded format — non-literal by design */
 				if ((hdrlen = snprintf(buf, sizeof(hdr), hdr, Hostname)) >= (int)sizeof(hdr))
 					hdrlen = (int)sizeof(hdr) - 1;
 			}
+#pragma GCC diagnostic pop
 		}
 
 		if ((buflen = vsnprintf(buf + hdrlen, sizeof(buf) - (size_t)hdrlen, ctl, va) + hdrlen) >= (int)sizeof(buf))

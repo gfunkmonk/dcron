@@ -25,7 +25,7 @@ INSTALL_PROGRAM = $(INSTALL) -D
 INSTALL_DATA = $(INSTALL) -D -m0644 -g root
 INSTALL_DIR = $(INSTALL) -d -m0755 -g root
 CFLAGS ?= -O2
-CFLAGS += -std=c11 -Wall -Wextra -Wstrict-prototypes -Wno-missing-field-initializers -Wfloat-equal -fstack-protector-all -Wformat-security -Wformat=2 -fPIE -D_FORTIFY_SOURCE=2
+CFLAGS += -std=c11 -Wall -Wextra -Wstrict-prototypes -Wno-missing-field-initializers -Wfloat-equal -fstack-protector-all -Wformat-security -Wformat=2 -fPIE
 CFLAGS += -Wno-sign-compare
 LDFLAGS += -Wl,-z,relro -Wl,-z,now -pie
 SRCS = main.c subs.c database.c job.c concat.c chuser.c

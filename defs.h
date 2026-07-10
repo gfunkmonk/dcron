@@ -14,10 +14,12 @@
  * 3. need _DEFAULT_SOURCE for setenv, mk{d,s}temp, [v]snprintf, initgroups, strsep, strdup,
  *    setres{u,g}id, gethostname, perror
  * 4. use concat.c instead of requiring asprintf / _GNU_SOURCE
+ *
+ * _GNU_SOURCE is a superset of _XOPEN_SOURCE + _DEFAULT_SOURCE and is
+ * required on some glibc versions to expose setresuid/setresgid.
  */
 
-#define _XOPEN_SOURCE 700
-#define _DEFAULT_SOURCE 1
+#define _GNU_SOURCE 1
 
 #include <sys/types.h>
 #include <sys/stat.h>
