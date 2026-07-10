@@ -20,7 +20,7 @@ Prototype const char *SendMail;
 static void
 make_mailfile(char *buf, size_t bufsz, const char *user, int pid)
 {
-	snprintf(buf, bufsz, "%s/cron.%s.%d", TempDir, user, pid);
+	snprintf(buf, bufsz, "%s/cron.%s.%d", CRONMAIL, user, pid);
 }
 
 void
@@ -70,7 +70,7 @@ RunJob(CronFile *file, CronLine *line)
 		 * CHILD — change to target user, then exec the job
 		 */
 
-		if (ChangeUser(line->cl_UserName, TempDir) < 0) {
+		if (ChangeUser(line->cl_UserName, CRONMAIL) < 0) {
 			printlogf(LOG_ERR, "unable to ChangeUser (user %s %s)\n",
 					line->cl_UserName,
 					line->cl_Description);
@@ -264,7 +264,7 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 		 * CHILD — drop privileges and send mail
 		 */
 
-		if (ChangeUser(file->cf_UserName, TempDir) < 0) {
+		if (ChangeUser(file->cf_UserName, CRONMAIL) < 0) {
 			printlogf(LOG_ERR, "unable to ChangeUser to send mail (user %s %s)\n",
 					file->cf_UserName,
 					line->cl_Description);

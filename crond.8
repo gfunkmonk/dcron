@@ -20,13 +20,13 @@ directory of system crontabs (defaults to /etc/cron.d)
 .RE
 .TP
 .B \-c dir
-directory of per\-user crontabs (defaults to /var/spool/cron/crontabs)
+directory of per\-user crontabs (defaults to /var/lib/cron/crontabs)
 .RS
 .RE
 .TP
 .B \-t dir
 directory of timestamps for \@freq and FREQ=\&... jobs (defaults to
-/var/spool/cron/cronstamps)
+/var/lib/cron/cronstamps)
 .RS
 .RE
 .TP
@@ -181,7 +181,7 @@ tampered with the file type.
 \f[B]crontab\f[] notifies \f[B]crond\f[] that a user's crontab file has
 been modified (or created or deleted) through the \[lq]cron.update\[rq]
 file, which resides in the per\-user crontabs directory (usually
-/var/spool/cron/crontabs).
+/var/lib/cron/crontabs).
 \f[B]crontab\f[] appends the filename of the modified crontab file to
 \[lq]cron.update\[rq]; and \f[B]crond\f[] inspects this file to
 determine when to reparse or otherwise update its internal list of
@@ -189,7 +189,7 @@ parsed crontabs.
 .PP
 Whenever a \[lq]cron.update\[rq] file is seen, \f[B]crond\f[] also
 re\-reads timestamp files from its timestamp directory (usually
-/var/spool/cron/cronstamps).
+/var/lib/cron/cronstamps).
 Normally these will just mirror \f[B]crond\f[]'s own internal
 representations, but this mechanism could be used to manually notify
 \f[B]crond\f[] that you've externally updated the timestamps.
@@ -219,7 +219,7 @@ When you install a package foo, it might write its own foo\-specific
 crontab to /etc/cron.d/foo.
 .PP
 The superuser has a per\-user crontab along with other users.
-It usually resides at /var/spool/cron/crontabs/root.
+It usually resides at /var/lib/cron/crontabs/root.
 .PP
 Users can only have a crontab if they have an entry in /etc/passwd;
 however they do not need to have login shell privileges.

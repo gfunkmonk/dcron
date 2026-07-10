@@ -306,10 +306,6 @@ main(int ac, char **av)
 
 		if (setsid() < 0)
 			perror("setsid");
-		if ((fd = open("/dev/tty", O_RDWR)) >= 0) {
-			ioctl(fd, TIOCNOTTY, 0);
-			close(fd);
-		}
 
 		/* setup logging for backgrounded daemons */
 

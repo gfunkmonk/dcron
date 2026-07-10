@@ -69,10 +69,13 @@
 #define PIDFILE		"/run/crond.pid"
 #endif
 #ifndef CRONTABS
-#define CRONTABS	"/var/spool/cron/crontabs"
+#define CRONTABS	"/var/lib/cron/crontabs"
 #endif
 #ifndef CRONSTAMPS
-#define CRONSTAMPS	"/var/spool/cron/cronstamps"
+#define CRONSTAMPS	"/var/lib/cron/cronstamps"
+#endif
+#ifndef CRONMAIL
+#define CRONMAIL	"/var/spool/cron"
 #endif
 #ifndef LOG_IDENT
 #define LOG_IDENT	"crond"
@@ -116,7 +119,7 @@
 
 #define HOURLY_FREQ		(60 * 60)
 #define DAILY_FREQ		(24 * HOURLY_FREQ)
-#define	WEEKLY_FREQ		(7 * DAILY_FREQ)
+#define WEEKLY_FREQ		(7 * DAILY_FREQ)
 #define MONTHLY_FREQ	(30 * DAILY_FREQ)
 #define YEARLY_FREQ		(365 * DAILY_FREQ)
 

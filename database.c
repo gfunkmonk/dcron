@@ -1101,6 +1101,7 @@ TestJobs(time_t t1, time_t t2)
 						/* (re)schedule job? */
 						if (line->cl_Mins[tp->tm_min] &&
 								line->cl_Hrs[tp->tm_hour] &&
+								line->cl_Mons[tp->tm_mon] &&
 								(line->cl_Days[tp->tm_mday] && n_wday & line->cl_Dow[tp->tm_wday])
 						   ) {
 							if (line->cl_NotUntil)
@@ -1174,6 +1175,7 @@ ArmJob(CronFile *file, CronLine *line, time_t t1, time_t t2)
 							}
 							if (line->cl_Mins[tp->tm_min] &&
 									line->cl_Hrs[tp->tm_hour] &&
+									line->cl_Mons[tp->tm_mon] &&
 									(line->cl_Days[tp->tm_mday] && n_wday & line->cl_Dow[tp->tm_wday])
 							   ) {
 								/* notifier will run soon enough, we wait for it */
