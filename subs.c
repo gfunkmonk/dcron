@@ -1,4 +1,3 @@
-
 /*
  * SUBS.C
  *
@@ -9,13 +8,13 @@
 
 #include "defs.h"
 
-Prototype void printlogf(int level, const char *ctl, ...);
-Prototype void fdprintlogf(int level, int fd, const char *ctl, ...);
-Prototype int fdprintf(int fd, const char *ctl, ...);
+Prototype void printlogf(int level, const char *ctl, ...) ATTR_PRINTF(2, 3);
+Prototype void fdprintlogf(int level, int fd, const char *ctl, ...) ATTR_PRINTF(3, 4);
+Prototype int fdprintf(int fd, const char *ctl, ...) ATTR_PRINTF(2, 3);
 Prototype void initsignals(void);
 Prototype char Hostname[SMALL_BUFFER];
 
-void vlog(int level, int fd, const char *ctl, va_list va);
+static void vlog(int level, int fd, const char *ctl, va_list va);
 
 char Hostname[SMALL_BUFFER];
 
@@ -45,89 +44,99 @@ fdprintf(int fd, const char *ctl, ...)
 {
 	va_list va;
 	char buf[LOG_BUFFER];
-	int n;
+	ssize_t n, written = 0, len;
 
 	va_start(va, ctl);
 	vsnprintf(buf, sizeof(buf), ctl, va);
-	n = write(fd, buf, strlen(buf));
 	va_end(va);
 
-	return n;
+	len = (ssize_t)strlen(buf);
+	while (written < len) {
+		n = write(fd, buf + written, (size_t)(len - written));
+		if (n < 0) {
+			if (errno == EINTR)
+				continue;
+			return (int)written;
+		}
+		written += n;
+	}
+	return (int)written;
 }
 
-void
+static void
 vlog(int level, int fd, const char *ctl, va_list va)
 {
 	char buf[LOG_BUFFER];
 	static short suppressHeader = 0;
 	static short hostname_initialized = 0;
 
-	if (level <= LogLevel) {
-		if (ForegroundOpt) {
-			/*
-			 * when -d or -f, we always (and only) log to stderr
-			 * fd will be 2 except when 2 is bound to a execing subprocess, then it will be 8
-			 * [v]snprintf write at most size including \0; they'll null-terminate, even when they truncate
-			 * we don't care here whether it truncates
-			 */
-			vsnprintf(buf, sizeof(buf), ctl, va);
-			if (write(fd, buf, strlen(buf)) < 0) {
-				/* Ignore write errors to avoid cascading failures */
-			}
-		} else if (SyslogOpt) {
-			/* log to syslog */
-			vsnprintf(buf, sizeof(buf), ctl, va);
-			syslog(level, "%s", buf);
+	if (level > LogLevel)
+		return;
 
-		} else {
-			/* log to file */
-
-			time_t t = time(NULL);
-			struct tm *tp = localtime(&t);
-			int buflen, hdrlen = 0;
-			buf[0] = 0; /* in case suppressHeader or strftime fails */
-			if (!suppressHeader) {
-				/*
-				 * run LogHeader through strftime --> [yields hdr] plug in Hostname --> [yields buf]
-				 */
-				char hdr[SMALL_BUFFER];
-				/* Initialize hostname once */
-				if (!hostname_initialized) {
-					if (gethostname(Hostname, sizeof(Hostname)) == 0)
-						/* gethostname successful */
-						/* result will be \0-terminated except gethostname doesn't promise to do so if it has to truncate */
-						Hostname[sizeof(Hostname)-1] = 0;
-					else
-						Hostname[0] = 0;   /* gethostname() call failed */
-					hostname_initialized = 1;
-				}
-				/* strftime returns strlen of result, provided that result plus a \0 fit into buf of size */
-				if (strftime(hdr, sizeof(hdr), LogHeader, tp)) {
-					/* [v]snprintf write at most size including \0; they'll null-terminate, even when they truncate */
-					/* return value >= size means result was truncated */
-					if ((hdrlen = snprintf(buf, sizeof(hdr), hdr, Hostname)) >= sizeof(hdr))
-						hdrlen = sizeof(hdr) - 1;
-				}
-			}
-			if ((buflen = vsnprintf(buf + hdrlen, sizeof(buf) - hdrlen, ctl, va) + hdrlen) >= sizeof(buf))
-				buflen = sizeof(buf) - 1;
-
-			if (write(fd, buf, buflen) < 0) {
-				/* Ignore write errors to avoid cascading failures */
-			}
-			/* if previous write wasn't \n-terminated, we suppress header on next write */
-			suppressHeader = (buf[buflen-1] != '\n');
-
+	if (ForegroundOpt) {
+		/*
+		 * when -d or -f, we always (and only) log to stderr.
+		 * fd will be 2 except when 2 is bound to an exec'd subprocess,
+		 * in which case it will be 8.
+		 */
+		vsnprintf(buf, sizeof(buf), ctl, va);
+		if (write(fd, buf, strlen(buf)) < 0) {
+			/* Ignore write errors to avoid cascading failures */
 		}
+	} else if (SyslogOpt) {
+		/* log to syslog */
+		vsnprintf(buf, sizeof(buf), ctl, va);
+		syslog(level, "%s", buf);
+
+	} else {
+		/* log to file */
+
+		time_t t = time(NULL);
+		struct tm *tp = localtime(&t);
+		int buflen, hdrlen = 0;
+
+		buf[0] = '\0'; /* in case suppressHeader or strftime fails */
+
+		if (!suppressHeader) {
+			/*
+			 * run LogHeader through strftime --> [yields hdr],
+			 * then plug in Hostname --> [yields buf]
+			 */
+			char hdr[SMALL_BUFFER];
+
+			/* Initialize hostname exactly once */
+			if (!hostname_initialized) {
+				(void)gethostname(Hostname, sizeof(Hostname));
+				/* Always NUL-terminate regardless of gethostname result */
+				Hostname[sizeof(Hostname) - 1] = '\0';
+				hostname_initialized = 1;
+			}
+
+			if (strftime(hdr, sizeof(hdr), LogHeader, tp)) {
+				if ((hdrlen = snprintf(buf, sizeof(hdr), hdr, Hostname)) >= (int)sizeof(hdr))
+					hdrlen = (int)sizeof(hdr) - 1;
+			}
+		}
+
+		if ((buflen = vsnprintf(buf + hdrlen, sizeof(buf) - (size_t)hdrlen, ctl, va) + hdrlen) >= (int)sizeof(buf))
+			buflen = (int)sizeof(buf) - 1;
+
+		if (write(fd, buf, (size_t)buflen) < 0) {
+			/* Ignore write errors to avoid cascading failures */
+		}
+		/* if previous write wasn't \n-terminated, suppress header on next write */
+		suppressHeader = (buf[buflen - 1] != '\n');
 	}
 }
 
-void reopenlogger(int sig) {
+static void
+reopenlogger(int sig)
+{
 	int fd;
 	(void)sig;
 	if (getpid() == DaemonPid) {
-		/* only daemon handles, children should ignore */
-		if ((fd = open(LogFile, O_WRONLY|O_CREAT|O_APPEND, 0600)) < 0) {
+		/* only the daemon handles this; children should ignore */
+		if ((fd = open(LogFile, O_WRONLY|O_CREAT|O_APPEND|O_CLOEXEC, 0600)) < 0) {
 			/* can't reopen log file, exit */
 			exit(errno);
 		}
@@ -136,42 +145,46 @@ void reopenlogger(int sig) {
 	}
 }
 
-void waitmailjob(int sig) {
+static void
+waitmailjob(int sig)
+{
 	pid_t child;
 	(void)sig;
+
+	/* Guard against DaemonPid being uninitialized (0 would kill the process group) */
+	if (DaemonPid <= 0)
+		return;
+
 	/*
-	 * Wait for any children in our process group.
-	 * These will all be mailjobs.
+	 * Wait for any children in our process group — these are all mailjobs.
 	 */
 	do {
 		child = waitpid(-DaemonPid, NULL, WNOHANG);
-		/* call was interrupted, try again: won't happen because we use SA_RESTART */
-		/* if (child == (pid_t)-1 && errno == EINTR) continue; */
-	} while (child > (pid_t) 0);
-	/* if no pending children, child,errno == -1,ECHILD */
-	/* if all children still running, child == 0 */
+	} while (child > (pid_t)0);
 }
 
-void quit(int sig) {
+static void
+quit(int sig)
+{
 	(void)sig;
 	Quit = 1;
 }
 
 void
-initsignals (void) {
+initsignals(void)
+{
 	struct sigaction sa;
 	int n;
 
 	/* save daemon's pid globally */
 	DaemonPid = getpid();
 
+	sigemptyset(&sa.sa_mask);
+
 	/* restart any system calls that were interrupted by signal */
 	sa.sa_flags = SA_RESTART;
-	if (!ForegroundOpt && !SyslogOpt)
-		sa.sa_handler = reopenlogger;
-	else
-		sa.sa_handler = SIG_IGN;
-	if (sigaction (SIGHUP, &sa, NULL) != 0) {
+	sa.sa_handler = (!ForegroundOpt && !SyslogOpt) ? reopenlogger : SIG_IGN;
+	if (sigaction(SIGHUP, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGHUP handling, reason: %s", strerror(errno));
 		exit(n);
@@ -179,7 +192,7 @@ initsignals (void) {
 
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = quit;
-	if (sigaction (SIGINT, &sa, NULL) != 0) {
+	if (sigaction(SIGINT, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGINT handling, reason: %s", strerror(errno));
 		exit(n);
@@ -187,7 +200,7 @@ initsignals (void) {
 
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = quit;
-	if (sigaction (SIGTERM, &sa, NULL) != 0) {
+	if (sigaction(SIGTERM, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGTERM handling, reason: %s", strerror(errno));
 		exit(n);
@@ -195,7 +208,7 @@ initsignals (void) {
 
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = waitmailjob;
-	if (sigaction (SIGCHLD, &sa, NULL) != 0) {
+	if (sigaction(SIGCHLD, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGCHLD handling, reason: %s", strerror(errno));
 		exit(n);
@@ -203,7 +216,7 @@ initsignals (void) {
 
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = quit;
-	if (sigaction (SIGQUIT, &sa, NULL) != 0) {
+	if (sigaction(SIGQUIT, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGQUIT handling, reason: %s", strerror(errno));
 		exit(n);

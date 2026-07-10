@@ -9,16 +9,15 @@
 
 /*
  * portability issues
- * 0. gcc defaults to _BSD_SOURCE and _POSIX_SOURCE
  * 1. need _POSIX_SOURCE or _XOPEN_SOURCE for getopt, fileno, sigaction
  * 2. need _XOPEN_SOURCE for strptime
- * 3. need _BSD_SOURCE for setenv, mk{d,s}temp, [v]snprintf, initgroups, strsep, strdup, setre{u,g}id, gethostname, perror
+ * 3. need _DEFAULT_SOURCE for setenv, mk{d,s}temp, [v]snprintf, initgroups, strsep, strdup,
+ *    setres{u,g}id, gethostname, perror
  * 4. use concat.c instead of requiring asprintf / _GNU_SOURCE
  */
 
-#define _XOPEN_SOURCE 1
+#define _XOPEN_SOURCE 700
 #define _DEFAULT_SOURCE 1
-#define _BSD_SOURCE 1
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,8 +45,20 @@
 #include <stdio.h>
 #include <libgen.h>
 
+/* Use standard extern instead of the Prototype macro */
 #define Prototype extern
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
+
+/* Compiler hints */
+#if defined(__GNUC__) || defined(__clang__)
+#  define ATTR_PRINTF(fmt, args)  __attribute__((__format__(__printf__, fmt, args)))
+#  define ATTR_SENTINEL           __attribute__((__sentinel__(0)))
+#  define ATTR_NORETURN           __attribute__((__noreturn__))
+#else
+#  define ATTR_PRINTF(fmt, args)
+#  define ATTR_SENTINEL
+#  define ATTR_NORETURN
+#endif
 
 #ifndef SCRONTABS
 #define SCRONTABS	"/etc/cron.d"
@@ -120,7 +131,7 @@
 #define LOGHEADER TIMESTAMP_FMT " %%s " LOG_IDENT ": "
 #define LOCALE_LOGHEADER "%c %%s " LOG_IDENT ": "
 
-//For removing warnings from -Wunused-parameter
+/* Suppress unused-parameter warnings */
 #define UNUSED(X)               ((void)(X))
 
 /* Limits */
@@ -150,18 +161,18 @@ typedef struct CronLine {
 	char	*cl_Timestamp;	/* path to timestamp file, if cl_Freq defined */
 	struct	CronWaiter *cl_Waiters;
 	struct	CronNotifier *cl_Notifs;
-	int		cl_Freq;		/* 0 (use arrays),  minutes, -1 (noauto), -2 (startup)	*/
+	int		cl_Freq;		/* 0 (use arrays), seconds, -1 (reboot), -2 (noauto) */
 	int		cl_Delay;		/* defaults to cl_Freq or hourly	*/
 	time_t	cl_LastRan;
 	time_t	cl_NotUntil;
-	int		cl_Pid;			/* running pid, 0, or armed (-1), or waiting (-2) */
+	pid_t	cl_Pid;			/* running pid, JOB_NONE(0), JOB_ARMED(-1), or JOB_WAITING(-2) */
     int		cl_MailFlag;	/* running pid is for mail		*/
-    int		cl_MailPos;	/* 'empty file' size			*/
-    char	cl_Mins[FIELD_MINUTES];	/* 0-59				*/
-    char	cl_Hrs[FIELD_HOURS];	/* 0-23					*/
-    char	cl_Days[FIELD_M_DAYS];	/* 1-31					*/
-    char	cl_Mons[FIELD_MONTHS];	/* 0-11				*/
-    char	cl_Dow[FIELD_W_DAYS];	/* 0-6, beginning sunday		*/
+    off_t	cl_MailPos;	/* 'empty file' size			*/
+    unsigned char	cl_Mins[FIELD_MINUTES];	/* 0-59			*/
+    unsigned char	cl_Hrs[FIELD_HOURS];	/* 0-23				*/
+    unsigned char	cl_Days[FIELD_M_DAYS];	/* 1-31				*/
+    unsigned char	cl_Mons[FIELD_MONTHS];	/* 0-11				*/
+    unsigned char	cl_Dow[FIELD_W_DAYS];	/* 0-6, beginning sunday	*/
 } CronLine;
 
 typedef struct CronWaiter {

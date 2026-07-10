@@ -19,7 +19,7 @@ int GetReplaceStream(const char *user, const char *file);
 void EditFile(const char *user, const char *file);
 
 const char *CDir = CRONTABS;
-int   UserId;
+uid_t UserId;
 
 
 int
@@ -33,7 +33,7 @@ main(int ac, char **av)
         char caller[SMALL_BUFFER];              /* user that ran program */
         char *tmp_file = NULL;		/* for cleanup of temp file after edit */
 
-        UserId = getuid();
+        UserId = (uid_t)getuid();
         if ((pas = getpwuid(UserId)) == NULL) {
                 perror("getpwuid");
                 exit(1);
@@ -393,7 +393,7 @@ GetReplaceStream(const char *user, const char *file)
         close(filedes[0]);
 
         if (ChangeUser(user, NULL) < 0)
-                exit(0);
+                _exit(1);
 
         fd = open(file, O_RDONLY);
         if (fd < 0) {
@@ -441,28 +441,27 @@ EditFile(const char *user, const char *file)
 
         if ((pid = fork()) == 0) {
                 /*
-                 * CHILD - change user and run editor on "$file"
+                 * CHILD — change user and run editor on "$file"
                  */
                 const char *ptr;
-                char visual[SMALL_BUFFER];
 
                 if (ChangeUser(user, TMPDIR) < 0)
-                        exit(0);
-                if ((ptr = getenv("EDITOR")) == NULL || strlen(ptr) >= sizeof(visual))
-                        if ((ptr = getenv("VISUAL")) == NULL || strlen(ptr) >= sizeof(visual))
-                                ptr = PATH_VI;
+                        _exit(1);
 
-                /* [v]snprintf write at most size including \0; they'll null-terminate, even when they truncate */
-                /* return value >= size means result was truncated */
-                if (snprintf(visual, sizeof(visual), "%s %s", ptr, file) < sizeof(visual))
-                        execl("/bin/sh", "/bin/sh", "-c", visual, NULL);
-                printlogf(0, "couldn't exec %s\n", visual);
-                exit(1);
+                /* Prefer VISUAL, then EDITOR, then compiled-in fallback.
+                 * Exec the editor directly (no shell) to avoid command injection. */
+                ptr = getenv("VISUAL");
+                if (!ptr || ptr[0] == '\0')
+                        ptr = getenv("EDITOR");
+                if (!ptr || ptr[0] == '\0')
+                        ptr = PATH_VI;
+
+                execl(ptr, ptr, file, NULL);
+                /* exec failed */
+                printlogf(0, "couldn't exec editor %s: %s\n", ptr, strerror(errno));
+                _exit(1);
         }
         if (pid < 0) {
-                /*
-                 * PARENT - failure
-                 */
                 perror("fork");
                 exit(1);
         }

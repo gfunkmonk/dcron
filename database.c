@@ -27,14 +27,14 @@ Prototype int ArmJob(CronFile *file, CronLine *line, time_t t1, time_t t2);
 Prototype void RunJobs(void);
 Prototype int CheckJobs(void);
 
-void SynchronizeFile(const char *dpath, const char *fname, const char *uname, int parseUser);
+static void SynchronizeFile(const char *dpath, const char *fname, const char *uname, int parseUser);
 void DeleteFile(CronFile **pfile);
 void DeleteLineContent(CronLine *line);
 char *ParseInterval(int *interval, char *ptr);
-char *ParseField(char *ary, int modvalue, int offset, int onvalue, const char **names, char *ptr);
-void FixDayDow(CronLine *line);
+static char *ParseField(char *ary, int modvalue, int offset, int onvalue, const char **names, char *ptr);
+static void FixDayDow(CronLine *line);
 void PrintLine(CronLine *line);
-void PrintFile(CronFile *file, char* loc, char* fname, int line);
+void PrintFile(CronFile *file, const char *loc, const char *fname, int lineno);
 
 CronFile *FileBase = NULL;
 
@@ -124,10 +124,8 @@ CheckUpdates(const char *dpath, int is_system, time_t t1, time_t t2)
 					printlogf(LOG_WARNING, "unable to prod for user %s: no crontab\n", fname);
 				else {
 					CronLine *line;
-					/* calling strtok(ptok...) then strtok(NULL) is equiv to calling strtok_r(NULL,..&ptok) */
-					while ((job = strtok(ptok, " \t\n")) != NULL) {
+					while ((job = strtok_r(NULL, " \t\n", &ptok)) != NULL) {
 						time_t force = t2;
-						ptok = NULL;
 						if (*job == '!') {
 							force = (time_t)-1;
 							++job;
@@ -142,7 +140,7 @@ CheckUpdates(const char *dpath, int is_system, time_t t1, time_t t2)
 							ArmJob(file, line, t1, force);
 						else {
 							printlogf(LOG_WARNING, "unable to prod for user %s: unknown job %s\n", fname, job);
-							/* we can continue parsing this line, we just don't install any CronWaiter for the requested job */
+							/* continue parsing this line; we just don't install a CronWaiter */
 						}
 					}
 				}
@@ -272,7 +270,8 @@ ReadTimestamps(const char *user)
 						printlogf(LOG_NOTICE, "no timestamp found (user %s job %s)\n", file->cf_UserName, line->cl_JobName);
 						/* write a fake timestamp file so our initial NotUntil doesn't keep being reset every hour when crond does a SynchronizeDir */
 						if ((fi = fopen(line->cl_Timestamp, "w")) != NULL) {
-							if (strftime(buf, sizeof(buf), CRONSTAMP_FMT, localtime(&line->cl_NotUntil)))
+							struct tm *ltm = localtime(&line->cl_NotUntil);
+							if (ltm && strftime(buf, sizeof(buf), CRONSTAMP_FMT, ltm))
 								if (fputs("after ", fi) >= 0)
 									if (fputs(buf,fi) >= 0)
 										succeeded = 1;
@@ -377,11 +376,11 @@ ParseTimeInterval(CronLine *line, char *ptr)
 static char*
 ParseTimeSpec(CronLine *line, char *ptr)
 {
-	ptr = ParseField(line->cl_Mins, FIELD_MINUTES, 0, 1, NULL, ptr);
-	ptr = ParseField(line->cl_Hrs,  FIELD_HOURS, 0, 1, NULL, ptr);
-	ptr = ParseField(line->cl_Days, FIELD_M_DAYS, 0, 1, NULL, ptr);
-	ptr = ParseField(line->cl_Mons, FIELD_MONTHS, -1, 1, MonAry, ptr);
-	ptr = ParseField(line->cl_Dow,  FIELD_W_DAYS, 0, ALL_DOW, DowAry, ptr);
+	ptr = ParseField((char*)line->cl_Mins, FIELD_MINUTES, 0, 1, NULL, ptr);
+	ptr = ParseField((char*)line->cl_Hrs,  FIELD_HOURS, 0, 1, NULL, ptr);
+	ptr = ParseField((char*)line->cl_Days, FIELD_M_DAYS, 0, 1, NULL, ptr);
+	ptr = ParseField((char*)line->cl_Mons, FIELD_MONTHS, -1, 1, MonAry, ptr);
+	ptr = ParseField((char*)line->cl_Dow,  FIELD_W_DAYS, 0, ALL_DOW, DowAry, ptr);
 
 	if (!ptr)
 		return NULL;
@@ -686,12 +685,27 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName, i
 			time_t tnow = time(NULL);
 			tnow -= tnow % 60;
 
+			if (!file) {
+				printlogf(LOG_ERR, "calloc failed in SynchronizeFile\n");
+				fclose(fi);
+				free(path);
+				return;
+			}
 			file->cf_UserName = strdup(userName);
 			file->cf_FileName = strdup(fileName);
-			file->cf_DPath = strdup(dpath);
+			file->cf_DPath    = strdup(dpath);
+			if (!file->cf_UserName || !file->cf_FileName || !file->cf_DPath) {
+				printlogf(LOG_ERR, "strdup failed in SynchronizeFile\n");
+				free(file->cf_UserName);
+				free(file->cf_FileName);
+				free(file->cf_DPath);
+				free(file);
+				fclose(fi);
+				free(path);
+				return;
+			}
 			pline = &file->cf_LineBase;
 
-			/* fgets reads at most size-1 chars until \n or EOF, then adds a\0; \n if present is stored in buf */
 			while (fgets(buf, sizeof(buf), fi) != NULL && --maxLines) {
 				CronLine line;
 
@@ -704,6 +718,11 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName, i
 				}
 
 				*pline = calloc(1, sizeof(CronLine));
+				if (!*pline) {
+					printlogf(LOG_ERR, "calloc failed for CronLine in SynchronizeFile\n");
+					DeleteLineContent(&line);
+					break;
+				}
 				/* copy working CronLine to newly allocated one */
 				**pline = line;
 
@@ -1362,32 +1381,24 @@ PrintLine(CronLine *line)
 }
 
 void
-PrintFile(CronFile *file, char* loc, char* fname, int line)
+PrintFile(CronFile *file, const char *loc, const char *fname, int lineno)
 {
 	CronFile *f;
 	CronLine *l;
 
-	printlogf(LOG_DEBUG, "%s %s:%d\n", loc, fname, line);
+	printlogf(LOG_DEBUG, "%s %s:%d\n", loc, fname, lineno);
 
 	if (!file)
 		return;
 
-	f = file;
-	while (f) {
-
-		if (strncmp(file->cf_UserName, "root", 4)) {
+	for (f = file; f; f = f->cf_Next) {
+		if (strncmp(f->cf_UserName, "root", 4) != 0) {
 			printlogf(LOG_DEBUG, "FILE %s/%s USER %s\n=============================\n",
-					file->cf_DPath,
-					file->cf_FileName,
-					file->cf_UserName);
-			l = f->cf_LineBase;
-
-			while (l) {
+					f->cf_DPath,
+					f->cf_FileName,
+					f->cf_UserName);
+			for (l = f->cf_LineBase; l; l = l->cl_Next)
 				PrintLine(l);
-				l = l->cl_Next;
-			}
 		}
-		f = f->cf_Next;
 	}
-
 }

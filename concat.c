@@ -22,7 +22,7 @@
 
 #include "defs.h"
 
-Prototype char *concat(const char *s1, ...);
+Prototype char *concat(const char *s1, ...) ATTR_SENTINEL;
 
 char *
 concat(const char *s1, ...)

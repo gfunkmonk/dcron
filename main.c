@@ -79,9 +79,10 @@ main(int ac, char **av)
 		switch (i) {
 			case 'l':
 				{
-					int level = atoi(optarg);
-					if (level >= 0 && level <= 7) {
-						LogLevel = level;
+					char *end;
+					long level = strtol(optarg, &end, 10);
+					if (*end == '\0' && level >= 0 && level <= 7) {
+						LogLevel = (short)level;
 					} else {
 						fprintf(stderr, "Unsupported loglevel %s.\n", optarg);
 						exit(2);
@@ -91,7 +92,7 @@ main(int ac, char **av)
 			case 'd':
 				DebugOpt = 1;
 				LogLevel = LOG_DEBUG;
-				[[fallthrough]]; //fall through to include f too */
+				/* fall through */
 			case 'f':
 				ForegroundOpt = 1;
 				break;
@@ -200,13 +201,14 @@ main(int ac, char **av)
 	fclose(stdin);
 	fclose(stdout);
 
-	i = open("/dev/null", O_RDWR);
+	i = open("/dev/null", O_RDWR|O_CLOEXEC);
 	if (i < 0) {
 		perror("open: /dev/null");
 		exit(1);
 	}
 	dup2(i, 0);
 	dup2(i, 1);
+	close(i);
 
 	/* create tempdir with permissions 0755 for cron output */
 	TempDir = strdup(TMPDIR "/cron.XXXXXX");
@@ -244,7 +246,7 @@ main(int ac, char **av)
 	if (ForegroundOpt == 0) {
 
 		int fd;
-		int pid;
+		pid_t pid;
 		int pipe_fd[2];
 		int status;
 
@@ -257,6 +259,8 @@ main(int ac, char **av)
 		if ((pid = fork()) < 0) {
 			/* fork failed */
 			perror("fork");
+			close(pipe_fd[0]);
+			close(pipe_fd[1]);
 			exit(1);
 		} else if (pid > 0) {
 			/* parent, reads from pipe */
