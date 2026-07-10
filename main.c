@@ -79,13 +79,23 @@ main(int ac, char **av)
 		switch (i) {
 			case 'l':
 				{
-					char *end;
-					long level = strtol(optarg, &end, 10);
-					if (*end == '\0' && level >= 0 && level <= 7) {
-						LogLevel = (short)level;
-					} else {
-						fprintf(stderr, "Unsupported loglevel %s.\n", optarg);
-						exit(2);
+					/* Accept both numeric (0-7) and named levels (emerg..debug) */
+					int j;
+					for (j = 0; LevelAry[j]; ++j) {
+						if (strcasecmp(optarg, LevelAry[j]) == 0) {
+							LogLevel = (short)j;
+							break;
+						}
+					}
+					if (!LevelAry[j]) {
+						char *end;
+						long level = strtol(optarg, &end, 10);
+						if (*end == '\0' && level >= 0 && level <= 7) {
+							LogLevel = (short)level;
+						} else {
+							fprintf(stderr, "Unsupported loglevel %s.\n", optarg);
+							exit(2);
+						}
 					}
 				}
 				break;
